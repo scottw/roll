@@ -7,6 +7,12 @@ Creates simple rolling backups for a file or directory.
 
 Just put the file in your `$PATH` and `chmod 0755 roll`.
 
+## options ##
+
+  * `--version`: prints the current version and exits
+  * `--debug`: tells you exactly what's going on while it's happening
+  * `--separator`: defaults to '.'
+
 ## usage ##
 
     roll /var/log/foo.log 5
