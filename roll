@@ -1,0 +1,88 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+## Scott Wiersdorf
+## Created: Mon Jul 22 15:55:18 MDT 2013
+
+## rotate files or directories, last one falls off the end. This is
+## useful for rotating logs or archiving directories.
+
+## usage: roll /path/to/thing 5
+
+## `thing` can be a file or a directory. The rotated things will be in
+## the same directory as the supplied thing.
+
+our $VERSION = "0.7";
+
+use Getopt::Long;
+my %opt = (separator => '.');
+GetOptions(\%opt,
+           'debug',
+           'separator=s',
+           'version')
+  or die "usage: roll (path) (count) [--separator=char] [--debug]\n";
+
+if ($opt{version}) {
+    print "roll, version $VERSION\n";
+    exit;
+}
+
+my $path = shift @ARGV
+  or die "usage: roll (path) (count)\n";
+$path =~ s{/$}{}g;
+
+if ($path eq '.') {
+    $path = `pwd`;
+    chomp $path;
+}
+
+if ($path eq '' or $path eq '/') {
+    die "Cannot rotate /\n";
+}
+
+my $top = shift @ARGV || 1;
+unless ($top =~ /^\d+$/) {
+    die "Count must be a positive integer.\n";
+}
+
+my $sfx = (-l $path ? '' : (-d _ ? '/' : ''));
+
+my $sep = $opt{separator};
+
+my ($end, $dir) = map { scalar reverse $_ } split(/\//, reverse ($path), 2);
+$dir ||= '.';
+
+print STDERR "DIR: $dir\n" if $opt{debug};
+print STDERR "END: $end\n" if $opt{debug};
+
+my @rsync_opts = qw(a l H S);
+push @rsync_opts, 'v' if $opt{debug};
+my $rsync_opts = '-' . join('', @rsync_opts);
+
+my @backups = reverse (1..$top-1);
+
+for my $ct (@backups) {
+    print STDERR "checking to see if we need to move $dir/$end$sep$ct...\n"
+      if $opt{debug};
+    next unless -l "$dir/$end$sep$ct" || -e _;
+
+    my $ctn = $ct + 1;
+    my $src = "$dir/$end$sep$ct"  . $sfx;
+    my $dst = "$dir/$end$sep$ctn" . $sfx;
+
+    if (-l $dst || -e _) {
+        print STDERR "removing $dst..." if $opt{debug};
+        system('rm', '-rf', $dst) if -e $dst;
+        print STDERR "done\n" if $opt{debug};
+    }
+
+    print STDERR "moving $src -> $dst..." if $opt{debug};
+    system('mv', $src, $dst);
+    print STDERR "done\n" if $opt{debug};
+}
+
+print STDERR "syncing $dir/$end$sfx -> $dir/$end${sep}1$sfx...\n" if $opt{debug};
+system('rsync', $rsync_opts, "$dir/$end$sfx", "$dir/$end${sep}1$sfx");
+
+exit;
