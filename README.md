@@ -62,3 +62,7 @@ as it goes: `foo.log.4` becomes `foo.log.5`, `foo.log.3` becomes
 `roll` will happily archive symlinks, directory hierarchies, and
 files. It may work on other kinds of things as well. Symlinks are
 always treated as files (i.e., they are never followed).
+
+## author ##
+
+Scott Wiersdorf, <scott@perlcode.org>
